@@ -1,0 +1,4 @@
+aiohttp
+feedparser
+
+pytest
