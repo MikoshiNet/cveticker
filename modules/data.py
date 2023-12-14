@@ -18,22 +18,16 @@ class Dataset:
         self.dataset: set[Data] = set()
 
     def __eq__(self, other):
-        return self.dataset == other.dataset # Maybe change to only check dataset[for].post
+        if isinstance(other, Dataset):
+            # Assuming you want to compare a specific attribute like 'post' in each Data object
+            return all(any(d.post == o.post for o in other.dataset) for d in self.dataset)
+        return False
 
     def __len__(self) -> int:
         return len(self.dataset)
 
     def __iter__(self):
         return iter(self.dataset)
-
-    def __getitem__(self, key):
-        return self.dataset[key]
-
-    def __setitem__(self, key, value):
-        return self.dataset[key] = value
-
-    def __delitem__(self, key, value):
-        return self.dataset[key] = value
 
     def __contains__(self, item) -> bool:
         if isinstance(item, Data):
