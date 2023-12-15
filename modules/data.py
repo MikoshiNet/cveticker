@@ -3,7 +3,7 @@ import hashlib
 # pylint: disable=missing-docstring
 
 class Data:
-    def __init__(self, post:str, content, mentioned_cves, cve=None):
+    def __init__(self, post:str, content:str, mentioned_cves:list, cve:str=None):
         self.post = hashlib.sha256(post.encode('utf-8')).hexdigest()
         self.content = content
         self.mentioned_cves = mentioned_cves
@@ -14,8 +14,8 @@ class Data:
 
 
 class Dataset:
-    def __init__(self) -> None:
-        self.dataset: set[Data] = set()
+    def __init__(self, dataset:set[Data]=None) -> None:
+        self.dataset: set[Data] = dataset if dataset else set()
 
     def __eq__(self, other):
         if isinstance(other, Dataset):
