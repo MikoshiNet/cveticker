@@ -3,3 +3,6 @@ feedparser
 beautifulsoup4
 
 pytest
+mongoengine
+mongomock
+python_on_whales # dep of pytest_mock_resources
