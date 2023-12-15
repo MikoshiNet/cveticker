@@ -25,13 +25,6 @@ async def process_entry(session, dataset, entry):
         content_raw = strip_html_tags(content_html)
         dataset.add(Data(entry.link, content_raw, cves))
 
-async def fetch_feed(url):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            content = await response.text()
-            feed = feedparser.parse(content)
-            return feed
-
 async def fetch_entry(session, entry) -> str:
     try:
         async with session.get(entry.link) as response:
@@ -46,6 +39,13 @@ async def fetch_entry(session, entry) -> str:
     except Exception as e: # pylint: disable=broad-exception-caught
         print(f"An unexpected error occurred: {e}")
         return None
+
+async def fetch_feed(url) -> feedparser.FeedParserDict:
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            content = await response.text()
+            feed = feedparser.parse(content)
+            return feed
 
 async def fetch_and_process_feed(session, url, dataset:Dataset):
     feed:feedparser.FeedParserDict = await fetch_feed(url)
