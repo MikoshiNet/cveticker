@@ -4,7 +4,8 @@ import aiohttp
 
 from modules.file_handler import get_file_json_content, set_file_json_content
 from modules.source import fetch_and_process_feed
-from modules.data import Dataset
+from modules.data import Dataset, Data
+from modules.db import Database
 
 class Config:
     def __init__(self) -> None:    
@@ -15,13 +16,21 @@ class Config:
 
 async def main():
     config = Config()
-    dataset:Dataset = Dataset()
+    db_config:dict = get_file_json_content("config/db.json")
+    db:Database = Database(
+        user=db_config["user"],
+        password=db_config["password"],
+        database=db_config["database"],
+        address=db_config["address"],
+        collection=db_config["collection"]
+        )
+
+    dataset:Dataset = Dataset(Data(data.post) for data in db.get_all_data())
 
     async with aiohttp.ClientSession() as session:
         tasks = [asyncio.create_task(fetch_and_process_feed(session, url, dataset)) for url in config.urls]
         await asyncio.gather(*tasks)
-
-        
+        [print(str(cve) for cve in str(data)) for data in dataset]
 
 if __name__ == "__main__":
     asyncio.run(main())
