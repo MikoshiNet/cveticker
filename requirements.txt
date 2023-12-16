@@ -1,5 +1,5 @@
-aiohttp
 feedparser
+aiohttp
 beautifulsoup4
 
 pytest
