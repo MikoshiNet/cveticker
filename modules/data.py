@@ -11,17 +11,20 @@ class Data:
         self.cve = cve # Unique CVE
 
     def __str__(self):
-        return self.mentioned_cves
+        return f"{self.post}, {self.content}"
 
     def __eq__(self, other):
         return self.post is other.post
+    
+    def __hash__(self):
+        return hash(self.post)
 
 
 class Dataset:
     def __init__(self, dataset:set[Data]=None) -> None:
         self.dataset: set[Data] = dataset if dataset else set()
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         if isinstance(other, Dataset):
             # Assuming you want to compare a specific attribute like 'post' in each Data object
             return all(any(d.post == o.post for o in other.dataset) for d in self.dataset)

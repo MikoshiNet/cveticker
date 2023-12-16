@@ -25,12 +25,13 @@ async def main():
         collection=db_config["collection"]
         )
 
-    dataset:Dataset = Dataset(Data(data.post) for data in db.get_all_data())
+    dataset:Dataset = Dataset(db.get_all_data())
 
     async with aiohttp.ClientSession() as session:
         tasks = [asyncio.create_task(fetch_and_process_feed(session, url, dataset)) for url in config.urls]
         await asyncio.gather(*tasks)
-        [print(str(cve) for cve in str(data)) for data in dataset]
+    
+    [db.insert_data(data) for data in dataset]
 
 if __name__ == "__main__":
     asyncio.run(main())

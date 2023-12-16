@@ -43,19 +43,14 @@ class Database:
 
         self.client:MongoClient = MongoClient(self.connection_string)
         self.database = self.client.get_database(database)
-        if not os.environ["TEST_ENV"]:
-            self.ensure_collection_schema(self.collection, data_schema)
+        self.ensure_collection_schema(self.collection, data_schema)
 
     def ensure_collection_schema(self, collection_name, desired_schema):
-    # Attempt to retrieve the current validation schema
         try:
             current_validation = self.database.command('listCollections', filter={'name': collection_name})
             current_schema = current_validation['cursor']['firstBatch'][0].get('options', {}).get('validator', {})
         except (IndexError, KeyError):
-            # Handle case where collection doesn't exist or schema information is not found
             current_schema = {}
-
-        # Compare and update the schema if necessary
         if current_schema != desired_schema:
             try:
                 self.database.command("collMod", collection_name, validator=desired_schema)
@@ -80,10 +75,14 @@ class Database:
         result = collection.insert_one(dic)
         return result.inserted_id
 
-    def get_all_data(self):
+    def get_all_data(self) -> set[Data]:
+        """
+        Returns:
+            set[Data]: returns a set of custom Data objects
+        """
         collection = self.database[self.collection]
         documents = list(collection.find({}))
-        return documents
+        return {Data(document["post"], document["content"], document["mentioned_cves"], document["cve"], is_hash=True) for document in documents}
 
     def get_data(self, key):
         collection = self.database[self.collection]
