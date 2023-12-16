@@ -3,7 +3,7 @@ import logging
 import os
 from datetime import datetime
 
-LOGFILE = "PDFtoCSV"
+LOGFILE = "llmparse"
 
 class Logger:
     """
