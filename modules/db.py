@@ -1,8 +1,10 @@
 """Provides interface functions for DB"""
 from pymongo import MongoClient
 import json
+import os
 
 from modules.data import Data
+from modules.logger import log_critical, log_info
 
 data_schema = {
     "bsonType": "object",
@@ -41,23 +43,27 @@ class Database:
 
         self.client:MongoClient = MongoClient(self.connection_string)
         self.database = self.client.get_database(database)
-        self.ensure_collection_schema(self.collection, data_schema)
+        if not os.environ["TEST_ENV"]:
+            self.ensure_collection_schema(self.collection, data_schema)
 
     def ensure_collection_schema(self, collection_name, desired_schema):
-       # Retrieve current collection info
-       current_info = self.database.command('listCollections', filter={'name': collection_name})
-       current_validation = current_info['cursor']['firstBatch'][0].get('options', {}).get('validator', {})
+    # Attempt to retrieve the current validation schema
+        try:
+            current_validation = self.database.command('listCollections', filter={'name': collection_name})
+            current_schema = current_validation['cursor']['firstBatch'][0].get('options', {}).get('validator', {})
+        except (IndexError, KeyError):
+            # Handle case where collection doesn't exist or schema information is not found
+            current_schema = {}
 
-       # Convert the desired schema to a format that can be compared
-       desired_validation = {'$jsonSchema': desired_schema}
-
-       # Check if the current validation rules match the desired schema
-       if json.dumps(current_validation) != json.dumps(desired_validation):
-           # Update the collection with the new schema
-           self.database.command('collMod', collection_name, validator=desired_validation)
-           print(f"Schema updated for collection '{collection_name}'.")
-       else:
-           print(f"Collection '{collection_name}' already has the desired schema.")
+        # Compare and update the schema if necessary
+        if current_schema != desired_schema:
+            try:
+                self.database.command("collMod", collection_name, validator=desired_schema)
+                print(f"Schema updated for collection '{collection_name}'.")
+            except Exception as e:
+                print(f"Error updating schema: {e}")
+        else:
+            print(f"Collection '{collection_name}' already has the desired schema.")
 
 
     def get_database(self):
@@ -70,7 +76,7 @@ class Database:
         dic["cve"] = data.cve
         dic["mentioned_cves"] = data.mentioned_cves
       
-        collection = self.database.web_data
+        collection = self.database[self.collection]
         result = collection.insert_one(dic)
         return result.inserted_id
 
@@ -81,5 +87,5 @@ class Database:
 
     def get_data(self, key):
         collection = self.database[self.collection]
-        documents = list(collection.find_one({"post": key}))
-        return documents
+        document = collection.find_one({"post": key})
+        return Data(document["post"], document["content"], document["mentioned_cves"], document["cve"], is_hash=True)
