@@ -3,14 +3,18 @@ import hashlib
 # pylint: disable=missing-docstring
 
 class Data:
-    def __init__(self, post:str, content:str, mentioned_cves:list, cve:str=None):
-        self.post = hashlib.sha256(post.encode('utf-8')).hexdigest()
+    def __init__(self, post:str, content:str, mentioned_cves:list, cve:str=None, is_hash=False):
+        if is_hash is False:
+            self.post = hashlib.sha256(post.encode('utf-8')).hexdigest()
         self.content = content
         self.mentioned_cves = mentioned_cves
         self.cve = cve # Unique CVE
 
     def __str__(self):
         return self.mentioned_cves
+
+    def __eq__(self, other):
+        return self.post is other.post
 
 
 class Dataset:
