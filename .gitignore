@@ -1,4 +1,8 @@
-venv
-.vscode
-__pycache__
+.vscode/
+
+venv/
+__pycache__/
+
+logs/
+
 db.json
