@@ -30,8 +30,8 @@ async def main():
     async with aiohttp.ClientSession() as session:
         tasks = [asyncio.create_task(fetch_and_process_feed(session, url, dataset)) for url in config.urls]
         await asyncio.gather(*tasks)
-    
-    [db.insert_data(data) for data in dataset]
+    for data in dataset:
+        db.insert_data(data)
 
 if __name__ == "__main__":
     asyncio.run(main())

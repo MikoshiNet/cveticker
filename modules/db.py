@@ -8,7 +8,7 @@ from modules.logger import log_critical, log_info
 
 data_schema = {
     "bsonType": "object",
-    "required": ["post", "content", "mentioned_cves"],
+    "required": ["post", "content"],
     "properties": {
         "post": {
             "bsonType": "string",
@@ -25,7 +25,7 @@ data_schema = {
             "items": {
                 "bsonType": "string"
             },
-            "description": "must be an array of strings"
+            "description": "optional array of strings"
         },
         "cve": {
             "bsonType": "string",
