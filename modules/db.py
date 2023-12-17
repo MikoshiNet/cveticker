@@ -68,11 +68,11 @@ class Database:
         dic:dict = {}
         dic["post"] = data.post
         dic["content"] = data.content
-        dic["cve"] = data.cve
         dic["mentioned_cves"] = data.mentioned_cves
+        dic["cve"] = data.cve
       
         collection = self.database[self.collection]
-        result = collection.insert_one(dic)
+        result = collection.insert_one({"post": data.post, "content": data.content, "mentioned_cves": data.mentioned_cves, "cve": data.cve})
         return result.inserted_id
 
     def get_all_data(self) -> set[Data]:

@@ -29,7 +29,6 @@ async def process_entry(session, dataset, entry):
     if content_html is not None:
         cves = deduce_cve(content_html)
         content_raw = strip_html_tags(content_html)
-        print(Data(entry.link, pretty_for_llm(content_raw), mentioned_cves=cves))
         dataset.add(Data(entry.link, pretty_for_llm(content_raw), mentioned_cves=cves))
 
 

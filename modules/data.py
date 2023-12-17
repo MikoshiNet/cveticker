@@ -15,7 +15,7 @@ class Data:
 
     def __eq__(self, other):
         return self.post is other.post
-    
+
     def __hash__(self):
         return hash(self.post)
 

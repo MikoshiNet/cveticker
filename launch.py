@@ -3,7 +3,7 @@ import asyncio
 import aiohttp
 
 from modules.file_handler import get_file_json_content, set_file_json_content
-from modules.source import fetch_and_process_feed
+from modules.rss.source import fetch_and_process_feed
 from modules.data import Dataset, Data
 from modules.db import Database
 
