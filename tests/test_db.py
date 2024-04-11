@@ -4,7 +4,7 @@ from hashlib import sha256
 from unittest.mock import patch, MagicMock
 
 from modules.db import Database
-from modules.data import Dataset, Data
+from modules.rss.data import Dataset, Data
 
 # def get_mock_database(mock_mongo_client):
 #     mock_mongo_database = mock_mongo_client["dev"]

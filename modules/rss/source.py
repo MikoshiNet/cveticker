@@ -5,7 +5,7 @@ import re
 import asyncio
 import aiohttp
 
-from modules.data import Dataset, Data
+from modules.rss.data import Dataset, Data
 
 # pylint: disable=missing-docstring
 

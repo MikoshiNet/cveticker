@@ -1,37 +1,22 @@
 # pylint: disable=missing-docstring, expression-not-assigned
-import asyncio
-import aiohttp
+import modules.nist.nist
 
-from modules.file_handler import get_file_json_content, set_file_json_content
-from modules.rss.source import fetch_and_process_feed
-from modules.data import Dataset, Data
-from modules.db import Database
+from modules.file_handler import get_file_json_content
 
 class Config:
-    def __init__(self) -> None:    
+    def __init__(self) -> None:
         try:
-            self.urls = get_file_json_content("urls.json")
+            config = get_file_json_content("config.json")
+            self.rss_urls = config["rss"]["targets"]
+            self.nist_api_key = config["nist"]["api_key"]
+            self.nist_filter_cvss_score = config["nist"]["filters"]["cvss_score"]
         except FileNotFoundError:
-            print("urls.json missing")
+            print("config.json missing")
 
-async def main():
-    config = Config()
-    db_config:dict = get_file_json_content("config/db.json")
-    db:Database = Database(
-        user=db_config["user"],
-        password=db_config["password"],
-        database=db_config["database"],
-        address=db_config["address"],
-        collection=db_config["collection"]
-        )
+def main():
+    config = Config() # pylint: disable=unused-variable
 
-    dataset:Dataset = Dataset(db.get_all_data())
-
-    async with aiohttp.ClientSession() as session:
-        tasks = [asyncio.create_task(fetch_and_process_feed(session, url, dataset)) for url in config.urls]
-        await asyncio.gather(*tasks)
-    for data in dataset:
-        db.insert_data(data)
+    modules.nist.nist.main() # TODO: This should be put into a new thread pylint: disable=fixme
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
