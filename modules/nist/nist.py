@@ -117,10 +117,11 @@ def get_content_for_output(db_data:dict, index:int, message_content="") -> None:
         ]
     }
 
-def get_new_cves():
-    db_data = load_db()
-    lastquery = get_last_query_timestamp(db_data)
-    query_data = fetch_nist_api_cves_since(lastquery, date_time)
+# I know dis is not the best way, but I want to keep it in here and then continue in branch CVE-9
+# def get_new_cves():
+#     db_data = load_db()
+#     lastquery = get_last_query_timestamp(db_data)
+#     query_data = fetch_nist_api_cves_since(lastquery, date_time)
 
 
 
