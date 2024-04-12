@@ -1,25 +1,24 @@
+# pylint: disable=missing-docstring
 """Provides interface functions for DB"""
-from modules.file_handler import get_file_json_content, set_file_json_content
+import json
+from datetime import datetime, timedelta
 
-from modules.rss.data import Data
-from modules.logger import log_critical, log_info
+from modules.file_handler import get_file_json_content
 
 
-class Database:
-    def __init__(self, file):
-        self.load(file)
+from modules.logger import log_critical
 
-    def load(self, file):
-        try:
-            self.db = get_file_json_content(file)
-        except FileNotFoundError as e:
-            log_critical(f"File was not found: {file}\nError: {e}")
 
-    def save(self, value:dict):
-        set_file_json_content
+def load_db() -> dict:
+    return get_file_json_content("database_file.json")
 
-    def get_all_data(self) -> set[Data]:
-        pass
+def populate_db(data:dict) -> None:
+    with open("database_file.json", "w", encoding='utf-8') as write_file:
+        json.dump(data, write_file)
 
-    def get_data(self, key):
-        pass
+
+def get_last_query_timestamp(loaded_db:dict):
+    try:
+        return loaded_db['timestamp']
+    except KeyError:
+        return (datetime.utcnow() - timedelta(hours=48)).isoformat() # FIXME

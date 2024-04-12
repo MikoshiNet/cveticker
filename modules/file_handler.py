@@ -1,6 +1,13 @@
+# pylint: disable=missing-docstring
 """Provides methods for handeling files and indexing directories"""
 import os
 import json
+
+def check_if_path_exists(file_path):
+    dir_name = os.path.dirname(file_path)
+    if not os.path.exists(dir_name):
+        print(dir_name)
+        os.makedirs(dir_name)
 
 def get_file_json_content(file_path, encoding = 'utf-8') -> dict:
     """
@@ -17,9 +24,6 @@ def set_file_json_content(file_path: str, data: list, encoding='utf-8'):
     """
     This sets a files content to the data, formatted in json
     """
-    dir_name = os.path.dirname(file_path)
-    if not os.path.exists(dir_name):
-        print(dir_name)
-        os.makedirs(dir_name)
+    check_if_path_exists(file_path)
     with open(file_path, 'w', encoding=encoding) as file:
         json.dump(data, file, indent=4)

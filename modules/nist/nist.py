@@ -1,15 +1,20 @@
-# pylint: disable=missing-docstring,fixme
+# pylint: disable=missing-docstring
 
 #This product uses the NVD API but is not endorsed or certified by the NVD.
 #Sample Time: "2024-03-29T01:26:11-07:00.999" # "2024-04-04T06:37:27.140"
 
-from datetime import datetime, timedelta
+from datetime import datetime, UTC
 import time
-import json
+import re
+
 import requests
+from bs4 import BeautifulSoup
+
+from modules.config import Config
+from modules.output.webhook import output_discord_webhook
+from modules.db import load_db, populate_db, get_last_query_timestamp
 
 from modules.logger import log_critical, log_error, log_info, log_debug # pylint: disable=unused-import
-from modules.file_handler import get_file_json_content
 
 
 webhook_list = [
@@ -20,47 +25,31 @@ webhook_list = [
 MESSAGE_USERNAME = "cveticker"
 CVSS_SCORE_FILTER = 6
 
-
-def get_datetime() -> str:
-    utc_now = datetime.utcnow()
-    formatted_datetime = utc_now.isoformat()
-    return formatted_datetime[:-3]
-
-
-def get_lastquery(loaded_db:dict):
-    try:
-        return loaded_db['timestamp']
-    except KeyError:
-        return (datetime.utcnow() - timedelta(hours=48)).isoformat()
-
-
-def output_discord_webhook(webhook, data):
-    send_request = requests.post(webhook, json=data, timeout=10)
-
-    try:
-        send_request.raise_for_status()
-    except requests.exceptions.HTTPError as err:
-        print(err)
-    else:
-        rate_limit = send_request.headers['x-ratelimit-limit']
-        rate_remaining = send_request.headers['x-ratelimit-remaining']
-        rate_reset = send_request.headers['x-ratelimit-reset-after']
-        print(f"Rate Remaining:{rate_remaining} " +
-              "| Rate Reset:{rate_reset}, | Status Code:{send_request.status_code}")
-        if int(rate_remaining) < int(rate_limit)-2:
-            time.sleep(int(rate_reset))
+def parse_nist_html(html, cve):
+    soup = BeautifulSoup(html, "html.parser")
+    cvss_score_text = soup.find("a", {"data-testid": "vuln-cvss3-cna-panel-score"}).text
+    if cvss_score_text:
+        pattern = r"\b\d+\.\d+\b"
+        match = re.search(pattern, cvss_score_text)
+        if match:
+            cvss_score = match.group()
+            log_info(f"Successfully matched: {cvss_score} in {cvss_score_text} available at {f'https://nvd.nist.gov/vuln/detail/{cve}'}")
+            return cvss_score
+        else:
+            log_error(f"Failed to find a match on {cvss_score_text} with pattern {pattern}")
+    return cvss_score if cvss_score else None
 
 
-def populate_db(data:dict) -> None:
-    with open("database_file.json", "w", encoding='utf-8') as write_file:
-        json.dump(data, write_file)
 
+def fetch_nist_html_cve(cve):
+    response = requests.get(f"https://nvd.nist.gov/vuln/detail/{cve}", timeout=10)
 
-def load_db() -> dict:
-    return get_file_json_content("database_file.json")
+    return response.text
 
+def get_nist_html_cve_cvss_of(cve):
+    return parse_nist_html(fetch_nist_html_cve(cve), cve)
 
-def query_nist(last_date:str, current_date:str) -> dict:
+def fetch_nist_api_cves_since(last_date:str, current_date:str) -> dict:
     url = 'https://services.nvd.nist.gov/rest/json/cves/2.0/'
     params = {
         'pubStartDate': last_date,
@@ -78,6 +67,12 @@ def query_nist(last_date:str, current_date:str) -> dict:
         return None # FIXME
     return response.json()
 
+def get_nist_api_cves():
+    last_tracked_timestamp = ""
+    current_timestamp = datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
+    fetch_nist_api_cves_since(last_tracked_timestamp, current_timestamp)
+
+
 waiting_list = [] # This needs to be stored somewhere not in memory
 
 def get_content_for_output(db_data:dict, index:int, message_content="") -> None:
@@ -92,8 +87,6 @@ def get_content_for_output(db_data:dict, index:int, message_content="") -> None:
         if missing_key == 'cvssMetricV31':
             log_info(f"Missing 'cvssMetricV31' in db_data: {db_data}")
             waiting_list.append(db_data['id'])
-
-
         else:
             log_critical(f"db_data: {db_data}\nError Message: {err}")
 
@@ -111,7 +104,8 @@ def get_content_for_output(db_data:dict, index:int, message_content="") -> None:
                 ]
             }
         log_info("CVSS Score lower than Filter")
-        return None # FIXME: Is this the way?
+        return None
+    # CVSS Score is None
     return {
         "content" : message_content,
         "username" : MESSAGE_USERNAME,
@@ -123,16 +117,22 @@ def get_content_for_output(db_data:dict, index:int, message_content="") -> None:
         ]
     }
 
+def get_new_cves():
+    db_data = load_db()
+    lastquery = get_last_query_timestamp(db_data)
+    query_data = fetch_nist_api_cves_since(lastquery, date_time)
+
+
 
 def main():
     while True:
         db_data = load_db()
         print("[*]Database has been loaded.")
-        lastquery = get_lastquery(db_data)
+        lastquery = get_last_query_timestamp(db_data)
         print(f"[*]Last query was {lastquery}")
-        date_time = get_datetime()
+        date_time = datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
         print(f"[*]Current Date/Time is {date_time}")
-        query_data = query_nist(lastquery, date_time)
+        query_data = fetch_nist_api_cves_since(lastquery, date_time)
         print("[*]Querying NIST...")
         print(query_data)
 
