@@ -21,6 +21,9 @@ webhook_list = [
     "https://discord.com/api/webhooks/1227621566720901182/JSWUSb4g68MNTbZATl00yrRH8pEtcaadKHURoVSEzqPAQEobaQjFzCKjpn2TcYHtIS3R" # pylint: disable=line-too-long
 ]
 
+class ExternalAnalysisNotProvidedException(Exception):
+    pass
+
 
 MESSAGE_USERNAME = "cveticker"
 CVSS_SCORE_FILTER = 6
@@ -37,8 +40,10 @@ def parse_nist_html(html, cve):
             return cvss_score
         else:
             log_error(f"Failed to find a match on {cvss_score_text} with pattern {pattern}")
-    return cvss_score if cvss_score else None
-
+    if cvss_score:
+        return cvss_score
+    else:
+        raise ExternalAnalysisNotProvidedException
 
 
 def fetch_nist_html_cve(cve):
@@ -46,10 +51,12 @@ def fetch_nist_html_cve(cve):
 
     return response.text
 
+
 def get_nist_html_cve_cvss_of(cve):
     return parse_nist_html(fetch_nist_html_cve(cve), cve)
 
-def fetch_nist_api_cves_since(last_date:str, current_date:str) -> dict:
+
+def fetch_nist_api_cves_since(last_date:str, current_date:str) -> dict: # This handles solely HTTP request and returns content
     url = 'https://services.nvd.nist.gov/rest/json/cves/2.0/'
     params = {
         'pubStartDate': last_date,
@@ -67,13 +74,39 @@ def fetch_nist_api_cves_since(last_date:str, current_date:str) -> dict:
         return None # FIXME
     return response.json()
 
-def get_nist_api_cves():
-    last_tracked_timestamp = ""
+
+def get_nist_api_cves(): # This handles both the logic of acquiring the timestamps and is the caller of a fetch function
+    last_tracked_timestamp = "2024-04-11T16:24:50.233"
     current_timestamp = datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
-    fetch_nist_api_cves_since(last_tracked_timestamp, current_timestamp)
+    return fetch_nist_api_cves_since(last_tracked_timestamp, current_timestamp)
+
+
+def format_nist_api_response(nist_response:dict):
+    data = {}
+    for vulnerability in nist_response["vulnerabilities"]:
+        try:
+            cvss_score = vulnerability['cve']['metrics']['cvssMetricV31'][0]['cvssData']['baseScore']
+        except KeyError as err:
+            missing_key = err.args[0]
+            if missing_key == 'cvssMetricV31':
+                log_info(f"Missing 'cvssMetricV31' in vulnerability: {vulnerability['cve']['id']}")
+                try:
+                    cvss_score = get_nist_html_cve_cvss_of(cve=vulnerability["cve"]["id"])
+                except ExternalAnalysisNotProvidedException:
+                    cvss_score = "Not Available"
+
+        data[vulnerability["cve"]["id"]] = {
+            "cvss_score": cvss_score,
+            "released_date": vulnerability['cve']['published'],
+            "modified_date": vulnerability['cve']['lastModified'],
+            "status": vulnerability["cve"]["vulnStatus"],
+            "tags": []
+        }
+    return data
 
 
 waiting_list = [] # This needs to be stored somewhere not in memory
+
 
 def get_content_for_output(db_data:dict, index:int, message_content="") -> None:
     log_debug(f"len(db_data['vulnerabilities']) == {len(db_data['vulnerabilities'])}")
@@ -117,11 +150,14 @@ def get_content_for_output(db_data:dict, index:int, message_content="") -> None:
         ]
     }
 
-# I know dis is not the best way, but I want to keep it in here and then continue in branch CVE-9
-# def get_new_cves():
-#     db_data = load_db()
-#     lastquery = get_last_query_timestamp(db_data)
-#     query_data = fetch_nist_api_cves_since(lastquery, date_time)
+
+def get_new_cves():
+    current_data:dict = load_db()
+    data_waiting_for_comparison = format_nist_api_response(get_nist_api_cves())
+    new_cves = {cve: data for cve, data in data_waiting_for_comparison.items() if cve not in current_data}
+
+    current_data.update(new_cves)
+    return new_cves
 
 
 
