@@ -11,6 +11,7 @@ from modules.logger import log_critical
 
 def load_db() -> dict:
     return get_file_json_content("database_file.json")
+    # TODO: Handle error if file doesnt exist or is empty and return either None or {}
 
 def populate_db(data:dict) -> None:
     with open("database_file.json", "w", encoding='utf-8') as write_file:
